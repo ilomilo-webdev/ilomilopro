@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Tokyo Ginko</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-black text-white flex items-center justify-center min-h-screen">
+
+<div class="w-full max-w-md bg-gray-900 p-6 rounded">
+
+<h1 class="text-2xl font-bold mb-4 text-center">TOKYO GINKO</h1>
+
+<!-- LOGIN -->
+<div>
+<input id="login-account" placeholder="Cuenta" class="w-full p-2 mb-2 text-black">
+<input id="login-password" type="password" placeholder="Contraseña" class="w-full p-2 mb-2 text-black">
+
+<button onclick="login()" class="bg-red-600 w-full p-2 mb-2">Entrar</button>
+<button onclick="register()" class="bg-yellow-600 w-full p-2">Crear cuenta</button>
+</div>
+
+<hr class="my-4">
+
+<p id="result" class="text-center"></p>
+
+</div>
+
+<script>
+function toast(msg){
+  document.getElementById("result").innerText = msg;
+}
+
+// REGISTRO
+async function register(){
+  const name = prompt("Nombre:");
+  const password = prompt("Contraseña:");
+
+  const res = await fetch('/api/register',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name,password})
+  });
+
+  const data = await res.json();
+
+  if(!res.ok){
+    toast(data.error);
+    return;
+  }
+
+  toast("Cuenta creada: " + data.accountNumber);
+}
+
+// LOGIN
+async function login(){
+  const account = document.getElementById("login-account").value.padStart(4,'0');
+  const password = document.getElementById("login-password").value;
+
+  const res = await fetch('/api/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({account,password})
+  });
+
+  const data = await res.json();
+
+  if(!res.ok){
+    toast(data.error);
+    return;
+  }
+
+  toast("Bienvenido " + data.name + " | Saldo: ¥" + data.balance);
+}
+</script>
+
+</body>
+</html>
