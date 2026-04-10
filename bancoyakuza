@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>龍銀行 — Banco del Dragón</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script>
@@ -56,8 +55,6 @@
         #loading-overlay.active{display:flex}
         .spinner{width:36px;height:36px;border:3px solid #252525;border-top-color:#DC2626;border-radius:50%;animation:spin .7s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
-        .pulse-dot{width:8px;height:8px;border-radius:50%;display:inline-block;animation:pulse 2s ease-in-out infinite}
-        @keyframes pulse{0%,100%{opacity:.4;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
     </style>
 </head>
 <body class="text-txt min-h-screen relative">
@@ -77,48 +74,6 @@
     </div>
 </div>
 
-<!-- CONFIG SUPABASE -->
-<div id="screen-config" class="screen flex-col items-center justify-center min-h-screen relative px-4">
-    <div class="watermark"><span class="font-display text-[14rem] sm:text-[18rem] text-ryu/[0.03] leading-none select-none">龍</span></div>
-    <div class="relative z-10 w-full max-w-md fade-in">
-        <div class="text-center mb-6">
-            <div class="w-14 h-14 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-database text-gold-b text-xl"></i>
-            </div>
-            <p class="font-display text-2xl text-txt mb-1">Configurar Base de Datos</p>
-            <p class="text-txt-d text-sm">Conectá tu proyecto de Supabase</p>
-        </div>
-        <div class="bg-card border border-bdr rounded-xl p-6 card-gold">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-txt-d text-xs uppercase tracking-wider mb-1.5">URL del Proyecto</label>
-                    <input id="cfg-url" type="url" class="input-field font-mono text-sm" placeholder="https://xxxxx.supabase.co">
-                    <p class="text-txt-d text-[10px] mt-1">Settings → API → Project URL</p>
-                </div>
-                <div>
-                    <label class="block text-txt-d text-xs uppercase tracking-wider mb-1.5">Anon / Public Key</label>
-                    <input id="cfg-key" type="text" class="input-field font-mono text-sm" placeholder="eyJhbGciOiJIUzI1NiIs...">
-                    <p class="text-txt-d text-[10px] mt-1">Settings → API → Project API keys → anon public</p>
-                </div>
-                <div id="cfg-status" class="hidden text-sm px-3 py-2 rounded-lg"></div>
-                <div class="flex gap-2">
-                    <button onclick="testConnection()" class="btn-secondary !py-2 !text-sm flex-1"><i class="fa-solid fa-bolt mr-1"></i>Probar</button>
-                    <button onclick="saveConfig()" class="btn-primary !py-2 !text-sm flex-1"><i class="fa-solid fa-check mr-1"></i>Guardar</button>
-                </div>
-            </div>
-        </div>
-        <div class="mt-5 bg-card-alt border border-bdr rounded-xl p-4">
-            <p class="text-xs text-txt-d font-semibold uppercase tracking-wider mb-2"><i class="fa-solid fa-circle-question mr-1 text-gold-b"></i>Primera vez?</p>
-            <ol class="text-xs text-txt-d space-y-1.5 leading-relaxed list-decimal list-inside">
-                <li>Creá un proyecto en <a href="https://supabase.com" target="_blank" class="text-gold-b underline">supabase.com</a> (gratis)</li>
-                <li>Andá a <strong>SQL Editor</strong> y ejecutá la tabla <em>banks</em></li>
-                <li>Copiar URL y key de <strong>Settings → API</strong></li>
-                <li>Pegalos arriba y guardá</li>
-            </ol>
-        </div>
-    </div>
-</div>
-
 <!-- LOBBY -->
 <div id="screen-lobby" class="screen flex-col items-center justify-center min-h-screen relative px-4">
     <div class="watermark"><span class="font-display text-[18rem] sm:text-[22rem] text-ryu/[0.03] leading-none select-none">龍</span></div>
@@ -127,7 +82,6 @@
             <p class="font-display text-4xl sm:text-5xl text-ryu-b mb-1">龍銀行</p>
             <p class="text-txt-d text-sm tracking-[0.3em] uppercase">Banco del Dragón</p>
             <div class="w-16 h-px bg-gradient-to-r from-transparent via-ryu to-transparent mx-auto mt-4"></div>
-            <div id="rt-indicator" class="hidden mt-3 flex items-center justify-center gap-2 text-xs text-emerald-400"><span class="pulse-dot bg-emerald-400"></span>Conectado en tiempo real</div>
         </div>
         <div class="grid gap-4">
             <div class="bg-card border border-bdr rounded-xl p-5 card-glow">
@@ -142,20 +96,18 @@
                     <div class="w-9 h-9 rounded-lg bg-gold/20 flex items-center justify-center"><i class="fa-solid fa-right-to-bracket text-gold-b text-sm"></i></div>
                     <div><p class="text-sm font-semibold text-txt">Unirse a banco existente</p><p class="text-txt-d text-xs">Pegá el código que te dieron</p></div>
                 </div>
-                <input id="join-code" type="text" class="input-field mb-3 font-mono text-sm tracking-wider text-center uppercase" placeholder="Pegá el código aquí...">
+                <input id="join-code" type="text" class="input-field mb-3 font-mono text-sm" placeholder="Pegá el código del banco aquí...">
                 <button onclick="handleJoin()" class="btn-gold w-full">Unirme</button>
             </div>
         </div>
         <div id="lobby-connected" class="hidden mt-5 bg-card-alt border border-bdr rounded-xl p-4">
             <p class="text-xs text-txt-d mb-2"><i class="fa-solid fa-link mr-1"></i>Banco activo:</p>
-            <p id="lobby-blob-id" class="font-mono text-lg text-gold-b tracking-[0.2em] text-center break-all mb-3"></p>
+            <p id="lobby-blob-id" class="font-mono text-sm text-gold-b break-all mb-3"></p>
             <div class="flex gap-2">
-                <button onclick="copyCode()" class="btn-gold !text-xs flex-1"><i class="fa-solid fa-copy mr-1"></i>Copiar código</button>
                 <button onclick="goToLogin()" class="btn-primary !py-2 !px-4 !text-sm flex-1">Ir al banco</button>
-                <button onclick="disconnectBank()" class="btn-sm bg-red-900/30 text-red-400 hover:bg-red-900/60 !py-2 !px-3">X</button>
+                <button onclick="disconnectBank()" class="btn-sm bg-red-900/30 text-red-400 hover:bg-red-900/60 !py-2 !px-3">Desconectar</button>
             </div>
         </div>
-        <button onclick="showConfig()" class="mt-4 text-txt-d text-xs hover:text-txt-m transition-colors block mx-auto"><i class="fa-solid fa-gear mr-1"></i>Cambiar base de datos</button>
     </div>
 </div>
 
@@ -203,7 +155,6 @@
         <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-3"><span class="font-display text-ryu-b text-xl">龍</span><div><p class="text-sm font-semibold text-txt leading-tight" id="user-nav-name"></p><p class="text-xs text-txt-d">Cuenta <span id="user-nav-cuenta" class="text-ryu-b font-mono"></span></p></div></div>
             <div class="flex items-center gap-3">
-                <span id="user-rt-dot" class="hidden pulse-dot bg-emerald-400" title="Tiempo real activo"></span>
                 <button onclick="refreshData()" class="text-txt-d hover:text-gold-b transition-colors" title="Refrescar datos"><i class="fa-solid fa-arrows-rotate text-sm"></i></button>
                 <button onclick="cerrarSesion()" class="text-txt-d hover:text-ryu-b transition-colors text-sm flex items-center gap-1.5"><i class="fa-solid fa-right-from-bracket text-xs"></i> Salir</button>
             </div>
@@ -224,7 +175,6 @@
         <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-3"><span class="font-display text-gold-b text-xl">龍</span><div><p class="text-sm font-semibold text-gold-b leading-tight">Administracion</p><p class="text-xs text-txt-d">Cuenta 0001</p></div></div>
             <div class="flex items-center gap-3">
-                <span id="adm-rt-dot" class="hidden pulse-dot bg-emerald-400" title="Tiempo real activo"></span>
                 <button onclick="refreshData()" class="text-txt-d hover:text-gold-b transition-colors" title="Refrescar datos"><i class="fa-solid fa-arrows-rotate text-sm"></i></button>
                 <button onclick="cerrarSesion()" class="text-txt-d hover:text-ryu-b transition-colors text-sm flex items-center gap-1.5"><i class="fa-solid fa-right-from-bracket text-xs"></i> Salir</button>
             </div>
@@ -254,131 +204,34 @@ const CATALOGO = [
 ];
 
 // ============================================================
-// SUPABASE — Configuración y cliente
+// RED — jsonblob.com (sin API key, sin registro)
 // ============================================================
-let SB_URL = localStorage.getItem('ryuGinko_sbUrl') || '';
-let SB_KEY = localStorage.getItem('ryuGinko_sbKey') || '';
-let sb = null;
-
-function initSupabase() {
-    try {
-        sb = window.supabase.createClient(SB_URL, SB_KEY, {
-            realtime: { params: { eventsPerSecond: 2 } }
-        });
-    } catch(e) { sb = null; }
-}
-
-function showConfig() {
-    document.getElementById('cfg-url').value = SB_URL;
-    document.getElementById('cfg-key').value = SB_KEY;
-    document.getElementById('cfg-status').classList.add('hidden');
-    showScreen('config');
-}
-
-async function testConnection() {
-    const url = document.getElementById('cfg-url').value.trim();
-    const key = document.getElementById('cfg-key').value.trim();
-    const st = document.getElementById('cfg-status');
-    if (!url || !key) { st.className='text-sm px-3 py-2 rounded-lg bg-red-900/30 text-red-400 border border-red-900/50'; st.textContent='Completá ambos campos'; st.classList.remove('hidden'); return; }
-    st.className='text-sm px-3 py-2 rounded-lg bg-card-alt text-txt-d border border-bdr'; st.textContent='Probando conexión...'; st.classList.remove('hidden');
-    try {
-        const testClient = window.supabase.createClient(url, key);
-        const { error } = await testClient.from('banks').select('id').limit(1);
-        if (error && error.code === '42P01') { st.className='text-sm px-3 py-2 rounded-lg bg-amber-900/30 text-amber-400 border border-amber-900/50'; st.textContent='Conexión OK, pero falta crear la tabla "banks". Ejecutá el SQL.'; }
-        else if (error) { st.className='text-sm px-3 py-2 rounded-lg bg-red-900/30 text-red-400 border border-red-900/50'; st.textContent='Error: ' + error.message; }
-        else { st.className='text-sm px-3 py-2 rounded-lg bg-emerald-900/30 text-emerald-400 border border-emerald-900/50'; st.textContent='Conexión exitosa. Todo funciona.'; }
-    } catch(e) { st.className='text-sm px-3 py-2 rounded-lg bg-red-900/30 text-red-400 border border-red-900/50'; st.textContent='Error al conectar. Verificá URL y key.'; }
-    st.classList.remove('hidden');
-}
-
-function saveConfig() {
-    const url = document.getElementById('cfg-url').value.trim();
-    const key = document.getElementById('cfg-key').value.trim();
-    if (!url || !key) return toast('Completá ambos campos','err');
-    SB_URL = url; SB_KEY = key;
-    localStorage.setItem('ryuGinko_sbUrl', url);
-    localStorage.setItem('ryuGinko_sbKey', key);
-    initSupabase();
-    toast('Configuración guardada','ok');
-    showScreen('lobby');
-}
-
-// ============================================================
-// RED — Supabase (reemplaza jsonblob.com)
-// ============================================================
+const API = 'https://jsonblob.com/api/jsonBlob';
 let BLOB_ID = localStorage.getItem('ryuGinko_blob') || null;
-let realtimeChannel = null;
-let lastWriteTime = 0;
-
 const DEFAULT_DB = {
     users:[{cuenta:'0001',pin:'admin123',nombre:'Administración',saldo:0,creado:Date.now()}],
     transacciones:[], nextId:1
 };
 
-function generarCodigo() {
-    const c = 'abcdefghijkmnpqrstuvwxyz23456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) code += c[Math.floor(Math.random() * c.length)];
-    return code;
-}
-
 async function apiGet() {
-    const { data, error } = await sb.from('banks').select('data').eq('id', BLOB_ID).single();
-    if (error) throw new Error(error.code === 'PGRST116' ? 'no encontrado' : error.message);
-    return data.data;
+    const r = await fetch(API+'/'+BLOB_ID);
+    if(!r.ok) throw new Error('blob no encontrado');
+    return r.json();
 }
-
 async function apiPut(db) {
-    const { error } = await sb.from('banks').update({ data: db, updated_at: new Date().toISOString() }).eq('id', BLOB_ID);
-    if (error) throw new Error(error.message);
+    const r = await fetch(API+'/'+BLOB_ID,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(db)});
+    if(!r.ok) throw new Error('error al guardar');
 }
-
 async function apiCreate() {
-    let code, ok = false;
-    for (let i = 0; i < 15; i++) {
-        code = generarCodigo();
-        const { data: existing } = await sb.from('banks').select('id').eq('id', code);
-        if (!existing || existing.length === 0) { ok = true; break; }
-    }
-    if (!ok) throw new Error('no se pudo generar código único');
-    const { error } = await sb.from('banks').insert({ id: code, data: DEFAULT_DB });
-    if (error) throw new Error(error.message);
-    return code;
+    const r = await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(DEFAULT_DB)});
+    if(!r.ok) throw new Error('error al crear');
+    const loc = r.headers.get('Location') || r.headers.get('location');
+    return loc.split('/').pop();
 }
-
 async function apiJoin(id) {
-    const { data, error } = await sb.from('banks').select('data').eq('id', id).single();
-    if (error) throw new Error('no encontrado');
-    return data.data;
-}
-
-// Suscripción en tiempo real
-function subscribeRealtime() {
-    if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
-    if (!BLOB_ID) return;
-    realtimeChannel = sb
-        .channel('bank-' + BLOB_ID)
-        .on('postgres_changes', {
-            event: 'UPDATE', schema: 'public', table: 'banks',
-            filter: 'id=eq.' + BLOB_ID
-        }, () => {
-            // No refrescar si nosotros mismos acabamos de escribir
-            if (Date.now() - lastWriteTime < 1500) return;
-            toast('Datos actualizados por otro usuario', 'info');
-            if (sesion) {
-                if (sesion.esAdmin) renderAdmin();
-                else renderUser();
-            }
-        })
-        .subscribe((status) => {
-            const dots = document.querySelectorAll('#rt-indicator, #user-rt-dot, #adm-rt-dot');
-            dots.forEach(d => { if (status === 'SUBSCRIBED') d.classList.remove('hidden'); else d.classList.add('hidden'); });
-        });
-}
-
-function unsubscribeRealtime() {
-    if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
-    document.querySelectorAll('#rt-indicator, #user-rt-dot, #adm-rt-dot').forEach(d => d.classList.add('hidden'));
+    const r = await fetch(API+'/'+id);
+    if(!r.ok) throw new Error('no encontrado');
+    return r.json();
 }
 
 function showLoad(){document.getElementById('loading-overlay').classList.add('active')}
@@ -394,9 +247,8 @@ async function withDB(fn) {
         const result = fn(db);
         if(result && result.error) return result;
         await apiPut(db);
-        lastWriteTime = Date.now();
         return result;
-    } catch(e) { return {error:'Error de conexión con la base de datos.'}; }
+    } catch(e) { return {error:'Error de conexión con el servidor. Verificá tu internet.'}; }
     finally { busy=false; hideLoad(); }
 }
 
@@ -431,17 +283,15 @@ function toggleVis(id,btn){const i=document.getElementById(id),s=i.type==='passw
 // ============================================================
 // SESIÓN Y NAVEGACIÓN
 // ============================================================
-let sesion=null, userTab='inicio', adminTab='control', lastDB=null;
+let sesion=null, userTab='inicio', adminTab='control';
 
 function showScreen(n){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+n).classList.add('active')}
 function setUserTab(t){userTab=t;document.querySelectorAll('#screen-user .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));renderUser()}
 function setAdminTab(t){adminTab=t;document.querySelectorAll('#screen-admin .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));renderAdmin()}
-function cerrarSesion(){sesion=null;unsubscribeRealtime();document.getElementById('login-cuenta').value='';document.getElementById('login-pin').value='';showScreen('login')}
+function cerrarSesion(){sesion=null;document.getElementById('login-cuenta').value='';document.getElementById('login-pin').value='';showScreen('login')}
 function goToLogin(){showScreen('login')}
 
-function disconnectBank(){BLOB_ID=null;localStorage.removeItem('ryuGinko_blob');sesion=null;unsubscribeRealtime();showScreen('lobby');document.getElementById('lobby-connected').classList.add('hidden');document.getElementById('join-code').value='';toast('Desconectado del banco','info')}
-
-function copyCode(){navigator.clipboard.writeText(BLOB_ID).then(()=>toast('Código copiado: '+BLOB_ID,'ok')).catch(()=>toast('Copiá el código manualmente','info'))}
+function disconnectBank(){BLOB_ID=null;localStorage.removeItem('ryuGinko_blob');sesion=null;showScreen('lobby');document.getElementById('lobby-connected').classList.add('hidden');document.getElementById('join-code').value='';toast('Desconectado del banco','info')}
 
 async function refreshData(){showLoad();try{if(sesion&&sesion.esAdmin)renderAdmin();else if(sesion)renderUser();toast('Datos actualizados','ok')}catch(e){toast('Error de conexión','err')}hideLoad()}
 
@@ -451,25 +301,23 @@ async function refreshData(){showLoad();try{if(sesion&&sesion.esAdmin)renderAdmi
 async function handleCreate(){
     showLoad();
     try{
-        const code=await apiCreate();
-        BLOB_ID=code;localStorage.setItem('ryuGinko_blob',code);
-        hideLoad();toast('Banco creado. Código: '+code,'ok');
+        const id=await apiCreate();
+        BLOB_ID=id;localStorage.setItem('ryuGinko_blob',id);
+        hideLoad();toast('Banco creado. Copiá el código para compartir.','ok');
         document.getElementById('lobby-connected').classList.remove('hidden');
-        document.getElementById('lobby-blob-id').textContent=code;
-        subscribeRealtime();
+        document.getElementById('lobby-blob-id').textContent=id;
         showScreen('login');
-    }catch(e){hideLoad();toast('Error al crear el banco: '+e.message,'err')}
+    }catch(e){hideLoad();toast('Error al crear el banco. Verificá tu internet.','err')}
 }
 
 async function handleJoin(){
-    const code=document.getElementById('join-code').value.trim().toLowerCase();
+    const code=document.getElementById('join-code').value.trim();
     if(!code)return toast('Pegá el código del banco','err');
     showLoad();
     try{
         await apiJoin(code);
         BLOB_ID=code;localStorage.setItem('ryuGinko_blob',code);
         hideLoad();toast('Conectado al banco correctamente','ok');
-        subscribeRealtime();
         showScreen('login');
     }catch(e){hideLoad();toast('Código inválido o banco no encontrado','err')}
 }
@@ -485,7 +333,6 @@ async function handleLogin(){
     hideLoad();
     if(res.error)return toast(res.error,'err');
     sesion={cuenta:res.user.cuenta,nombre:res.user.nombre,esAdmin:res.user.cuenta==='0001'};
-    subscribeRealtime();
     if(sesion.esAdmin){setAdminTab('control');showScreen('admin')}
     else{document.getElementById('user-nav-name').textContent=res.user.nombre;document.getElementById('user-nav-cuenta').textContent=res.user.cuenta;setUserTab('inicio');showScreen('user')}
 }
@@ -517,14 +364,16 @@ function handleCompra(itemId){const item=CATALOGO.find(i=>i.id===itemId);if(!ite
 // ============================================================
 // HANDLERS — ADMIN
 // ============================================================
-function admTransferir(c){const u=lastDB?lastDB.users.find(x=>x.cuenta===c):null;const admin=lastDB?lastDB.users.find(x=>x.cuenta==='0001'):null;if(!u)return;showModal('Transferir a '+u.nombre,'Tu saldo: '+fYen(admin?admin.saldo:0),'<input id="adm-tf-amt" type="number" class="input-field mt-2" placeholder="Cantidad" min="0">',async()=>{const amt=parseInt(document.getElementById('adm-tf-amt').value);if(!amt||amt<=0)return toast('Cantidad inválida','err');const r=await transferirFn('0001',c,amt);if(r.error)return toast(r.error,'err');toast('Transferido '+fYen(amt)+' a '+u.nombre,'ok');renderAdmin()},'Transferir')}
-function admInyectar(c){const u=lastDB?lastDB.users.find(x=>x.cuenta===c):null;if(!u)return;showModal('Inyectar fondos a '+u.nombre,'Cuenta #'+c+' — Saldo: '+fYen(u.saldo),'<p class="text-xs text-emerald-400 mb-2"><i class="fa-solid fa-circle-info mr-1"></i>Crea dinero nuevo. No se descuenta de nadie.</p><input id="adm-iny-amt" type="number" class="input-field" placeholder="Cantidad" min="0">',async()=>{const amt=parseInt(document.getElementById('adm-iny-amt').value);if(!amt||amt<=0)return toast('Cantidad inválida','err');const r=await inyectarFn(c,amt);if(r.error)return toast(r.error,'err');toast('Inyectados '+fYen(amt),'ok');renderAdmin()},'Inyectar')}
-function admDrenar(c){const u=lastDB?lastDB.users.find(x=>x.cuenta===c):null;if(!u)return;showModal('Drenar fondos de '+u.nombre,'Saldo: '+fYen(u.saldo),'<p class="text-xs text-orange-400 mb-2"><i class="fa-solid fa-circle-info mr-1"></i>El dinero sale del sistema.</p><input id="adm-drn-amt" type="number" class="input-field" placeholder="Cantidad" min="0">',async()=>{const amt=parseInt(document.getElementById('adm-drn-amt').value);if(!amt||amt<=0)return toast('Cantidad inválida','err');const r=await drenarFn(c,amt);if(r.error)return toast(r.error,'err');toast('Drenados '+fYen(amt),'ok');renderAdmin()},'Drenar','!bg-orange-900 hover:!bg-orange-800')}
-function admEliminar(c){const u=lastDB?lastDB.users.find(x=>x.cuenta===c):null;if(!u)return;const msg=u.saldo>0?'<p class="text-amber-400 text-xs mt-2"><i class="fa-solid fa-circle-info mr-1"></i>Saldo de '+fYen(u.saldo)+' recuperado por admin.</p>':'';showModal('Eliminar a '+u.nombre,'#'+c,'<p class="text-txt-d text-sm">Acción permanente.</p>'+msg,async()=>{const r=await eliminarFn(c);if(r.error)return toast(r.error,'err');toast('Cuenta eliminada','ok');renderAdmin()},'Eliminar','!bg-red-900 hover:!bg-red-800')}
+function admTransferir(c){const db_cache=lastDB;const u=db_cache?db_cache.users.find(x=>x.cuenta===c):null;const admin=db_cache?db_cache.users.find(x=>x.cuenta==='0001'):null;if(!u)return;showModal('Transferir a '+u.nombre,'Tu saldo: '+fYen(admin?admin.saldo:0),'<input id="adm-tf-amt" type="number" class="input-field mt-2" placeholder="Cantidad" min="0">',async()=>{const amt=parseInt(document.getElementById('adm-tf-amt').value);if(!amt||amt<=0)return toast('Cantidad inválida','err');const r=await transferirFn('0001',c,amt);if(r.error)return toast(r.error,'err');toast('Transferido '+fYen(amt)+' a '+u.nombre,'ok');renderAdmin()},'Transferir')}
+function admInyectar(c){const db_cache=lastDB;const u=db_cache?db_cache.users.find(x=>x.cuenta===c):null;if(!u)return;showModal('Inyectar fondos a '+u.nombre,'Cuenta #'+c+' — Saldo: '+fYen(u.saldo),'<p class="text-xs text-emerald-400 mb-2"><i class="fa-solid fa-circle-info mr-1"></i>Crea dinero nuevo. No se descuenta de nadie.</p><input id="adm-iny-amt" type="number" class="input-field" placeholder="Cantidad" min="0">',async()=>{const amt=parseInt(document.getElementById('adm-iny-amt').value);if(!amt||amt<=0)return toast('Cantidad inválida','err');const r=await inyectarFn(c,amt);if(r.error)return toast(r.error,'err');toast('Inyectados '+fYen(amt),'ok');renderAdmin()},'Inyectar')}
+function admDrenar(c){const db_cache=lastDB;const u=db_cache?db_cache.users.find(x=>x.cuenta===c):null;if(!u)return;showModal('Drenar fondos de '+u.nombre,'Saldo: '+fYen(u.saldo),'<p class="text-xs text-orange-400 mb-2"><i class="fa-solid fa-circle-info mr-1"></i>El dinero sale del sistema.</p><input id="adm-drn-amt" type="number" class="input-field" placeholder="Cantidad" min="0">',async()=>{const amt=parseInt(document.getElementById('adm-drn-amt').value);if(!amt||amt<=0)return toast('Cantidad inválida','err');const r=await drenarFn(c,amt);if(r.error)return toast(r.error,'err');toast('Drenados '+fYen(amt),'ok');renderAdmin()},'Drenar','!bg-orange-900 hover:!bg-orange-800')}
+function admEliminar(c){const db_cache=lastDB;const u=db_cache?db_cache.users.find(x=>x.cuenta===c):null;if(!u)return;const msg=u.saldo>0?'<p class="text-amber-400 text-xs mt-2"><i class="fa-solid fa-circle-info mr-1"></i>Saldo de '+fYen(u.saldo)+' recuperado por admin.</p>':'';showModal('Eliminar a '+u.nombre,'#'+c,'<p class="text-txt-d text-sm">Acción permanente.</p>'+msg,async()=>{const r=await eliminarFn(c);if(r.error)return toast(r.error,'err');toast('Cuenta eliminada','ok');renderAdmin()},'Eliminar','!bg-red-900 hover:!bg-red-800')}
 
 // ============================================================
 // RENDER — USUARIO
 // ============================================================
+let lastDB = null;
+
 async function renderUser(){
     showLoad();
     try{lastDB=await apiGet()}catch(e){hideLoad();toast('Error de conexión','err');return}
@@ -568,16 +417,16 @@ async function renderAdmin(){
         el.innerHTML=`<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Registro Completo</h2><p class="text-txt-d text-sm">${txs.length} movimientos</p></div>${txs.length>0?`<div class="bg-card border border-bdr rounded-xl overflow-hidden card-glow"><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-bdr text-txt-d text-[10px] uppercase tracking-wider"><th class="text-left px-4 py-2.5 font-medium">ID</th><th class="text-left px-4 py-2.5 font-medium">Fecha</th><th class="text-left px-4 py-2.5 font-medium">Tipo</th><th class="text-left px-4 py-2.5 font-medium">Detalle</th><th class="text-right px-4 py-2.5 font-medium">Cantidad</th></tr></thead><tbody class="divide-y divide-bdr/50">${txs.map(t=>`<tr class="table-row transition-colors"><td class="px-4 py-2.5 font-mono text-txt-d text-xs">#${t.id}</td><td class="px-4 py-2.5 text-txt-d text-xs whitespace-nowrap">${fFecha(t.fecha)}</td><td class="px-4 py-2.5"><span class="${tipoColor(t.tipo)} text-xs font-medium uppercase tracking-wider">${fTipo(t.tipo)}</span></td><td class="px-4 py-2.5 text-txt-m text-xs max-w-[250px] truncate">${t.desc}</td><td class="px-4 py-2.5 text-right font-mono font-semibold ${t.cantidad>0?'text-txt':'text-txt-d'}">${t.cantidad>0?fYen(t.cantidad):'---'}</td></tr>`).join('')}</tbody></table></div></div>`:`<div class="bg-card border border-bdr rounded-xl p-8 text-center"><p class="text-txt-d text-sm">Sin movimientos</p></div>`}`;
     }
     else if(adminTab==='red'){
-        el.innerHTML=`<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Compartir Banco</h2><p class="text-txt-d text-sm">Todos los usuarios necesitan este código para conectarse</p></div><div class="bg-card border border-bdr rounded-xl p-6 card-gold mb-4"><p class="text-txt-d text-xs uppercase tracking-wider mb-2">Código del Banco</p><p class="font-mono text-2xl text-gold-b tracking-[0.3em] text-center select-all bg-card-alt border border-bdr rounded-lg p-5">${BLOB_ID}</p><button onclick="copyCode()" class="btn-gold mt-3 w-full"><i class="fa-solid fa-copy mr-1"></i>Copiar código</button></div><div class="bg-card border border-bdr rounded-xl p-5 card-glow mb-4"><h3 class="text-sm font-semibold text-ryu-b mb-3"><i class="fa-solid fa-arrow-right-to-bracket mr-2"></i>Unirse a otro banco</h3><p class="text-txt-d text-xs mb-3">Pegá un código para cambiar de banco. Perderás acceso al actual.</p><input id="admin-join-code" type="text" class="input-field font-mono text-sm mb-3 tracking-wider text-center uppercase" placeholder="Código del otro banco..."><button onclick="handleAdminJoin()" class="btn-primary !text-sm">Cambiar de banco</button></div><div class="bg-card border border-bdr rounded-xl p-5 card-glow"><h3 class="text-sm font-semibold text-txt-m mb-3"><i class="fa-solid fa-circle-info mr-2"></i>Cómo funciona</h3><ul class="text-txt-d text-xs space-y-2 leading-relaxed"><li><span class="text-gold-b font-semibold">1.</span> Creás el banco y se genera un código corto</li><li><span class="text-gold-b font-semibold">2.</span> Enviás ese código a los miembros de la familia</li><li><span class="text-gold-b font-semibold">3.</span> Cada uno pega el código en "Unirse a banco"</li><li><span class="text-gold-b font-semibold">4.</span> Todos ven y operan sobre los mismos datos</li><li><span class="text-gold-b font-semibold">5.</span> <span class="text-emerald-400">Los cambios se sincronizan automáticamente en tiempo real</span></li></ul></div>`;
+        el.innerHTML=`<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Compartir Banco</h2><p class="text-txt-d text-sm">Todos los usuarios necesitan este código para conectarse</p></div><div class="bg-card border border-bdr rounded-xl p-6 card-gold mb-4"><p class="text-txt-d text-xs uppercase tracking-wider mb-2">Código del Banco</p><p class="font-mono text-lg text-gold-b break-all leading-relaxed select-all bg-card-alt border border-bdr rounded-lg p-4">${BLOB_ID}</p><button onclick="navigator.clipboard.writeText('${BLOB_ID}').then(()=>toast('Código copiado','ok')).catch(()=>toast('Copiá el código manualmente','info'))" class="btn-gold mt-3"><i class="fa-solid fa-copy mr-1"></i>Copiar código</button></div><div class="bg-card border border-bdr rounded-xl p-5 card-glow mb-4"><h3 class="text-sm font-semibold text-ryu-b mb-3"><i class="fa-solid fa-arrow-right-to-bracket mr-2"></i>Unirse a otro banco</h3><p class="text-txt-d text-xs mb-3">Pegá un código para cambiar de banco. Perderás acceso al actual.</p><input id="admin-join-code" type="text" class="input-field font-mono text-sm mb-3" placeholder="Código del otro banco..."><button onclick="handleAdminJoin()" class="btn-primary !text-sm">Cambiar de banco</button></div><div class="bg-card border border-bdr rounded-xl p-5 card-glow"><h3 class="text-sm font-semibold text-txt-m mb-3"><i class="fa-solid fa-circle-info mr-2"></i>Cómo funciona</h3><ul class="text-txt-d text-xs space-y-2 leading-relaxed"><li><span class="text-gold-b font-semibold">1.</span> Creás el banco y se genera un código único</li><li><span class="text-gold-b font-semibold">2.</span> Enviás ese código a los miembros de la familia</li><li><span class="text-gold-b font-semibold">3.</span> Cada uno pega el código en "Unirse a banco"</li><li><span class="text-gold-b font-semibold">4.</span> Todos ven y operan sobre los mismos datos en tiempo real</li><li><span class="text-gold-b font-semibold">5.</span> Usá el botón <i class="fa-solid fa-arrows-rotate text-gold-b"></i> para refrescar y ver cambios de otros</li></ul></div>`;
     }
 }
 
 async function handleAdminJoin(){
-    const code=document.getElementById('admin-join-code').value.trim().toLowerCase();
+    const code=document.getElementById('admin-join-code').value.trim();
     if(!code)return toast('Pegá un código','err');
     showModal('Cambiar de banco','Vas a desconectarte del banco actual y conectar a otro.','<p class="text-red-400 text-sm mt-2">Si no guardaste el código actual, lo perdés.</p>',async()=>{
         showLoad();
-        try{await apiJoin(code);BLOB_ID=code;localStorage.setItem('ryuGinko_blob',code);unsubscribeRealtime();subscribeRealtime();hideLoad();toast('Conectado al nuevo banco','ok');renderAdmin()}
+        try{await apiJoin(code);BLOB_ID=code;localStorage.setItem('ryuGinko_blob',code);hideLoad();toast('Conectado al nuevo banco','ok');renderAdmin()}
         catch(e){hideLoad();toast('Código inválido','err')}
     },'Cambiar','!bg-red-900 hover:!bg-red-800');
 }
@@ -587,46 +436,20 @@ async function handleAdminJoin(){
 // ============================================================
 document.addEventListener('keydown',e=>{
     if(e.key!=='Enter')return;
-    const active=document.querySelector('.screen.active');
-    if(!active)return;
-    if(active.id==='screen-lobby')handleJoin();
-    else if(active.id==='screen-login')handleLogin();
-    else if(active.id==='screen-register')handleRegister();
-    else if(active.id==='screen-config')saveConfig();
+    if(document.getElementById('screen-lobby').classList.contains('active'))handleJoin();
+    else if(document.getElementById('screen-login').classList.contains('active'))handleLogin();
+    else if(document.getElementById('screen-register').classList.contains('active'))handleRegister();
 });
 
 // ============================================================
 // INICIALIZACIÓN
 // ============================================================
 async function init(){
-    // Verificar si hay configuración de Supabase
-    if(!SB_URL || !SB_KEY){
-        showScreen('config');
-        return;
-    }
-    initSupabase();
-    if(!sb){showScreen('config');toast('Error al inicializar Supabase','err');return}
-
-    // Verificar si hay banco guardado
     if(BLOB_ID){
         showLoad();
-        try{
-            await apiGet();
-            hideLoad();
-            showScreen('lobby');
-            document.getElementById('lobby-connected').classList.remove('hidden');
-            document.getElementById('lobby-blob-id').textContent=BLOB_ID;
-            subscribeRealtime();
-        }catch(e){
-            hideLoad();
-            localStorage.removeItem('ryuGinko_blob');
-            BLOB_ID=null;
-            showScreen('lobby');
-            toast('El banco anterior no existe. Creá uno nuevo.','err');
-        }
-    }else{
-        showScreen('lobby');
-    }
+        try{await apiGet();hideLoad();showScreen('login')}
+        catch(e){hideLoad();localStorage.removeItem('ryuGinko_blob');BLOB_ID=null;showScreen('lobby');toast('El banco anterior no existe. Creá uno nuevo.','err')}
+    }else{showScreen('lobby')}
 }
 init();
 </script>
