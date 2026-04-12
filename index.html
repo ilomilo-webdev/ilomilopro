@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>龍銀行 — Banco del Dragón (Online)</title>
+    <title>龍銀行 — Banco del Dragón</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Librería de Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Librería de Supabase (Versión estable específica) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script>
@@ -57,7 +57,7 @@
         .adm-action{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:.75rem;font-weight:500;transition:all .15s;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
         
         /* Loading Overlay */
-        #loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:200}
+        #loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:200;transition:opacity 0.5s;}
         .spinner{width:40px;height:40px;border:3px solid #333;border-top-color:#DC2626;border-radius:50%;animation:spin 1s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
     </style>
@@ -68,7 +68,7 @@
 <div id="loading-overlay">
     <div class="text-center">
         <div class="spinner mx-auto mb-4"></div>
-        <p class="text-txt-d text-sm">Conectando con Supabase...</p>
+        <p class="text-txt-d text-sm">Iniciando Sistema...</p>
     </div>
 </div>
 
@@ -180,9 +180,14 @@
 const SUPABASE_URL = 'https://cjpcskqmiuhmioedyspv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcGNza3FtaXVobWlvZWR5c3B2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NjE1NTQsImV4cCI6MjA5MTUzNzU1NH0.0Z8o8GLAUAMg-2pDQHA0_HPsI03cEyvgiP4heJwzTyY';
 
-// Crear el cliente de Supabase
-const { createClient } = window.supabase;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Crear el cliente de Supabase con verificación de carga
+let supabase;
+try {
+    const { createClient } = window.supabase;
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch (e) {
+    console.error("Error cargando librería Supabase:", e);
+}
 
 // ============================================================
 // CATÁLOGO
@@ -202,10 +207,11 @@ const CATALOGO = [
 // FUNCIONES AUXILIARES
 // ============================================================
 async function cargarTodo() {
+    if(!supabase) throw new Error("Supabase no cargó correctamente.");
     try {
         const [resUsers, resTx] = await Promise.all([
             supabase.from('users').select('*'),
-            supabase.from('transacciones').select('*').order('fecha', { ascending: false }) // Orden descendente para ver lo último primero
+            supabase.from('transacciones').select('*').order('fecha', { ascending: false }) 
         ]);
         if (resUsers.error) throw resUsers.error;
         if (resTx.error) throw resTx.error;
@@ -215,32 +221,34 @@ async function cargarTodo() {
         };
     } catch (e) {
         console.error('Error cargando datos:', e);
-        toast('Error al conectar con la base de datos. Verifica que las tablas existan.', 'err');
-        return { users: [], transacciones: [] };
+        throw new Error('Error de conexión con la base de datos.');
     }
 }
 
 async function guardarUsuario(user) {
+    if(!supabase) return false;
     const { error } = await supabase.from('users').upsert(user, { onConflict: 'cuenta' });
-    if (error) { console.error(error); toast("Error al guardar usuario: " + error.message, "err"); return false; }
+    if (error) { console.error(error); return false; }
     return true;
 }
 
 async function guardarTx(tx) {
+    if(!supabase) return false;
     const { error } = await supabase.from('transacciones').insert([{
         tipo: tx.tipo,
         de: tx.de || null,
         a: tx.a || null,
         cantidad: tx.cantidad,
-        descripcion: tx.descripcion, // Campo corregido
+        descripcion: tx.descripcion,
         fecha: tx.fecha || new Date().toISOString()
     }]);
-    if (error) { console.error(error); toast("Error al guardar transacción: " + error.message, "err"); return false; }
+    if (error) { console.error(error); return false; }
     return true;
 }
 
-// Crear admin si no existe
+// Crear admin si no existe (NO BLOQUEANTE)
 async function inicializarAdmin() {
+    if(!supabase) return;
     try {
         const { data, error } = await supabase.from('users').select('cuenta').eq('cuenta', '0001');
         if (error) throw error;
@@ -257,7 +265,7 @@ async function inicializarAdmin() {
             console.log('Admin creado automáticamente');
         }
     } catch (e) {
-        console.warn('No se pudo verificar/crear admin (quizás las tablas no existen aún):', e);
+        console.warn('No se pudo verificar/crear admin:', e);
     }
 }
 
@@ -265,6 +273,7 @@ async function inicializarAdmin() {
 // LÓGICA DEL BANCO
 // ============================================================
 async function generarCuenta() {
+    if(!supabase) return "0000"; // Fallback
     const { data } = await supabase.from('users').select('cuenta');
     const usadas = new Set((data || []).map(u => u.cuenta));
     let c;
@@ -273,6 +282,7 @@ async function generarCuenta() {
 }
 
 async function login(cuenta, pin) {
+    if(!supabase) return { error: 'Sistema no disponible' };
     const c = cuenta.padStart(4,'0');
     const { data, error } = await supabase.from('users').select('*').eq('cuenta', c).eq('pin', pin).single();
     if (error || !data) return { error: 'Cuenta o contraseña incorrectos' };
@@ -280,10 +290,12 @@ async function login(cuenta, pin) {
 }
 
 async function registrar(nombre, pin) {
+    if(!supabase) return { error: 'Sistema no disponible' };
     nombre = nombre.trim();
     if (!nombre) return { error: 'El nombre es obligatorio' };
     if (!/^\d{4}$/.test(pin)) return { error: 'El PIN debe ser exactamente 4 dígitos' };
     const cuenta = await generarCuenta();
+    if(cuenta === "0000") return { error: 'Error generando cuenta' };
     const nuevo = {
         cuenta, pin, nombre, saldo: 0,
         creado: new Date().toISOString(),
@@ -299,10 +311,8 @@ async function registrar(nombre, pin) {
 }
 
 async function transferir(deCuenta, aCuenta, cantidad) {
+    if(!supabase) return { error: 'Sistema no disponible' };
     const aC = aCuenta.padStart(4,'0');
-    // MODIFICACIÓN: Permitimos transferir a uno mismo si es necesario (flexibilidad admin)
-    // if (deCuenta === aC) return { error: 'No puedes transferirte a ti mismo' }; 
-    
     const { data: uFrom } = await supabase.from('users').select('*').eq('cuenta', deCuenta).single();
     const { data: uTo } = await supabase.from('users').select('*').eq('cuenta', aC).single();
     
@@ -324,6 +334,7 @@ async function transferir(deCuenta, aCuenta, cantidad) {
 }
 
 async function comprar(cuenta, itemId) {
+    if(!supabase) return { error: 'Sistema no disponible' };
     const item = CATALOGO.find(i => i.id === itemId);
     if (!item) return { error: 'Producto no encontrado' };
     const { data: u } = await supabase.from('users').select('*').eq('cuenta', cuenta).single();
@@ -339,6 +350,7 @@ async function comprar(cuenta, itemId) {
 }
 
 async function inyectar(cuenta, cantidad) {
+    if(!supabase) return { error: 'Sistema no disponible' };
     cantidad = Math.round(cantidad);
     if (cantidad <= 0) return { error: 'Cantidad inválida' };
     const { data: u } = await supabase.from('users').select('*').eq('cuenta', cuenta).single();
@@ -353,6 +365,7 @@ async function inyectar(cuenta, cantidad) {
 }
 
 async function drenar(cuenta, cantidad) {
+    if(!supabase) return { error: 'Sistema no disponible' };
     cantidad = Math.round(cantidad);
     if (cantidad <= 0) return { error: 'Cantidad inválida' };
     const { data: u } = await supabase.from('users').select('*').eq('cuenta', cuenta).single();
@@ -368,10 +381,10 @@ async function drenar(cuenta, cantidad) {
 }
 
 async function eliminarUsuario(cuenta) {
+    if(!supabase) return { error: 'Sistema no disponible' };
     if (cuenta === '0001') return { error: 'No puedes eliminar al admin' };
     const { data: u } = await supabase.from('users').select('*').eq('cuenta', cuenta).single();
     if (!u) return { error: 'Usuario no encontrado' };
-    // Recuperar saldo al admin si tiene
     if (u.saldo > 0) {
         const { data: admin } = await supabase.from('users').select('*').eq('cuenta', '0001').single();
         if(admin) {
@@ -442,6 +455,9 @@ async function handleLogin() {
     const cuenta = document.getElementById('login-cuenta').value.trim();
     const pin = document.getElementById('login-pin').value.trim();
     if (!cuenta || !pin) return toast('Completa todos los campos','err');
+    
+    toast('Verificando credenciales...', 'info');
+    
     const res = await login(cuenta, pin);
     if (res.error) return toast(res.error,'err');
     sesion = { cuenta: res.user.cuenta, nombre: res.user.nombre, esAdmin: res.user.es_admin === true };
@@ -539,133 +555,147 @@ async function admEliminar(cuenta) {
 // RENDER
 // ============================================================
 async function renderUser() {
-    const db = await cargarTodo();
-    const u = db.users.find(x => x.cuenta === sesion.cuenta);
-    if(!u) return cerrarSesion();
-    const el = document.getElementById('user-content'); el.className = 'fade-in';
+    try {
+        const db = await cargarTodo();
+        const u = db.users.find(x => x.cuenta === sesion.cuenta);
+        if(!u) return cerrarSesion();
+        const el = document.getElementById('user-content'); el.className = 'fade-in';
 
-    if (userTab === 'inicio') {
-        let recibido = 0, enviado = 0;
-        db.transacciones.forEach(t => {
-            if(t.tipo === 'transferencia') {
-                if(t.a === sesion.cuenta && t.de !== sesion.cuenta) recibido += t.cantidad;
-                if(t.de === sesion.cuenta && t.a !== sesion.cuenta) enviado += t.cantidad;
-            }
-            if(t.tipo === 'inyeccion' && t.a === sesion.cuenta) recibido += t.cantidad;
-        });
-        const ultimos = db.transacciones.filter(t => t.de === sesion.cuenta || t.a === sesion.cuenta).slice(0, 5); // Ya están ordenados descendente en cargarTodo
-        el.innerHTML = `
-            <div class="bg-gradient-to-br from-card to-card-alt border border-bdr rounded-xl p-6 sm:p-8 text-center card-gold relative overflow-hidden mb-5">
-                <p class="text-txt-d text-xs uppercase tracking-[0.25em] mb-3">Saldo Disponible</p>
-                <p class="text-3xl sm:text-4xl font-bold text-gold-b font-display">${fYen(u.saldo)}</p>
-                <p class="text-txt-d text-xs mt-3 font-mono">Cuenta #${u.cuenta}</p>
-            </div>
-            <div class="grid grid-cols-2 gap-3 mb-5">
-                <div class="bg-card border border-bdr rounded-lg p-4 text-center"><p class="text-txt-d text-xs uppercase tracking-wider mb-1">Recibido</p><p class="text-lg font-semibold text-green-400">${fYen(recibido)}</p></div>
-                <div class="bg-card border border-bdr rounded-lg p-4 text-center"><p class="text-txt-d text-xs uppercase tracking-wider mb-1">Enviado</p><p class="text-lg font-semibold text-red-400">${fYen(enviado)}</p></div>
-            </div>
-            <div class="grid grid-cols-2 gap-3 mb-6">
-                <button onclick="setUserTab('transferir')" class="bg-card border border-bdr rounded-lg p-4 text-center hover:border-ryu/50 transition-colors group"><i class="fa-solid fa-arrow-right-arrow-left text-ryu-b mb-2 group-hover:scale-110 transition-transform inline-block"></i><p class="text-sm text-txt-m">Transferir</p></button>
-                <button onclick="setUserTab('tienda')" class="bg-card border border-bdr rounded-lg p-4 text-center hover:border-gold/50 transition-colors group"><i class="fa-solid fa-store text-gold-b mb-2 group-hover:scale-110 transition-transform inline-block"></i><p class="text-sm text-txt-m">Tienda</p></button>
-            </div>
-            ${ultimos.length>0?`<div class="bg-card border border-bdr rounded-xl overflow-hidden card-glow"><div class="px-4 py-3 border-b border-bdr"><p class="text-sm font-semibold text-txt-m">Ultimos movimientos</p></div><div class="divide-y divide-bdr/50">${ultimos.map(t=>{const ent=t.a===sesion.cuenta&&t.de!==sesion.cuenta;return`<div class="px-4 py-3 flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center ${ent?'bg-green-900/30':'bg-red-900/30'}"><i class="fa-solid ${tipoIcon(t.tipo)} text-xs ${ent?'text-green-400':'text-red-400'}"></i></div><div class="flex-1 min-w-0"><p class="text-sm text-txt truncate">${t.descripcion || t.desc}</p><p class="text-xs text-txt-d">${fFecha(t.fecha)}</p></div><p class="text-sm font-semibold ${ent?'text-green-400':'text-red-400'} whitespace-nowrap">${ent?'+':'-'}${fYen(t.cantidad)}</p></div>`;}).join('')}</div></div>`:`<div class="bg-card border border-bdr rounded-xl p-8 text-center"><i class="fa-solid fa-inbox text-txt-d text-2xl mb-2"></i><p class="text-txt-d text-sm">Sin movimientos aun</p></div>`}`;
-    }
-    else if (userTab === 'transferir') {
-        el.innerHTML = `<div class="bg-card border border-bdr rounded-xl p-6 card-glow mb-4"><h2 class="font-display text-lg text-txt mb-4">Transferir Yenes</h2><div class="space-y-4"><div><label class="block text-txt-d text-xs uppercase tracking-wider mb-1.5">Cuenta destino</label><input id="tf-dest" type="text" maxlength="4" class="input-field font-mono tracking-[0.5em] text-center" placeholder="0000" oninput="this.value=this.value.replace(/\\D/g,'')"></div><div><label class="block text-txt-d text-xs uppercase tracking-wider mb-1.5">Cantidad (¥)</label><input id="tf-monto" type="number" class="input-field text-center text-lg" placeholder="0" min="0"></div><p class="text-txt-d text-xs">Saldo disponible: <span class="text-gold-b font-semibold">${fYen(u.saldo)}</span></p><button onclick="handleTransferir()" class="btn-primary w-full">Enviar transferencia</button></div></div><div class="bg-card-alt border border-bdr rounded-lg p-4"><p class="text-txt-d text-xs leading-relaxed"><i class="fa-solid fa-circle-info mr-1 text-ryu-b"></i>Verifica bien la cuenta destino. Las transferencias son definitivas.</p></div>`;
-    }
-    else if (userTab === 'tienda') {
-        el.innerHTML = `<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Tienda de la Familia</h2><p class="text-txt-d text-sm">Adquiere bienes y servicios con tu saldo</p></div><div class="grid gap-3">${CATALOGO.map(item=>`<div class="bg-card border border-bdr rounded-xl p-4 flex items-start gap-4 card-glow hover:border-bdr-light transition-colors"><div class="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0 mt-0.5"><i class="fa-solid fa-torii-gate text-gold-b text-sm"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-txt">${item.nombre}</p><p class="text-xs text-txt-d mt-0.5">${item.desc}</p><div class="flex items-center justify-between mt-3"><p class="text-gold-b font-bold text-sm">${fYen(item.precio)}</p><button onclick="handleCompra(${item.id})" class="btn-gold text-xs">Comprar</button></div></div></div>`).join('')}</div><p class="text-txt-d text-xs mt-4 text-center">Saldo disponible: <span class="text-gold-b font-semibold">${fYen(u.saldo)}</span></p>`;
-    }
-    else if (userTab === 'historial') {
-        const txs = db.transacciones.filter(t => t.de === sesion.cuenta || t.a === sesion.cuenta);
-        el.innerHTML = `<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Historial de Movimientos</h2><p class="text-txt-d text-sm">${txs.length} movimiento${txs.length!==1?'s':''}</p></div>${txs.length>0?`<div class="bg-card border border-bdr rounded-xl overflow-hidden card-glow"><div class="divide-y divide-bdr/50">${txs.map(t=>{const ent=t.a===sesion.cuenta&&t.de!==sesion.cuenta;const prop=t.de===sesion.cuenta&&t.a===sesion.cuenta;const neut=t.tipo==='registro'||t.tipo==='eliminacion';let signo='',color=tipoColor(t.tipo);if(neut){}else if(prop){color='text-txt-d';}else if(ent){signo='+';color='text-green-400';}else{signo='-';color='text-red-400';}return`<div class="px-4 py-3 flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${ent?'bg-green-900/20':neut?'bg-card-alt':'bg-red-900/20'}"><i class="fa-solid ${tipoIcon(t.tipo)} text-xs ${color}"></i></div><div class="flex-1 min-w-0"><p class="text-sm text-txt truncate">${t.descripcion || t.desc}</p><p class="text-xs text-txt-d">${fFecha(t.fecha)}</p></div><div class="text-right shrink-0"><p class="text-sm font-semibold ${color} whitespace-nowrap">${signo}${t.cantidad>0?fYen(t.cantidad):'---'}</p><p class="text-[10px] text-txt-d uppercase">${fTipo(t.tipo)}</p></div></div>`;}).join('')}</div></div>`:`<div class="bg-card border border-bdr rounded-xl p-8 text-center"><i class="fa-solid fa-inbox text-txt-d text-2xl mb-2"></i><p class="text-txt-d text-sm">Sin movimientos</p></div>`}`;
+        if (userTab === 'inicio') {
+            let recibido = 0, enviado = 0;
+            db.transacciones.forEach(t => {
+                if(t.tipo === 'transferencia') {
+                    if(t.a === sesion.cuenta && t.de !== sesion.cuenta) recibido += t.cantidad;
+                    if(t.de === sesion.cuenta && t.a !== sesion.cuenta) enviado += t.cantidad;
+                }
+                if(t.tipo === 'inyeccion' && t.a === sesion.cuenta) recibido += t.cantidad;
+            });
+            const ultimos = db.transacciones.filter(t => t.de === sesion.cuenta || t.a === sesion.cuenta).slice(0, 5);
+            el.innerHTML = `
+                <div class="bg-gradient-to-br from-card to-card-alt border border-bdr rounded-xl p-6 sm:p-8 text-center card-gold relative overflow-hidden mb-5">
+                    <p class="text-txt-d text-xs uppercase tracking-[0.25em] mb-3">Saldo Disponible</p>
+                    <p class="text-3xl sm:text-4xl font-bold text-gold-b font-display">${fYen(u.saldo)}</p>
+                    <p class="text-txt-d text-xs mt-3 font-mono">Cuenta #${u.cuenta}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-5">
+                    <div class="bg-card border border-bdr rounded-lg p-4 text-center"><p class="text-txt-d text-xs uppercase tracking-wider mb-1">Recibido</p><p class="text-lg font-semibold text-green-400">${fYen(recibido)}</p></div>
+                    <div class="bg-card border border-bdr rounded-lg p-4 text-center"><p class="text-txt-d text-xs uppercase tracking-wider mb-1">Enviado</p><p class="text-lg font-semibold text-red-400">${fYen(enviado)}</p></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <button onclick="setUserTab('transferir')" class="bg-card border border-bdr rounded-lg p-4 text-center hover:border-ryu/50 transition-colors group"><i class="fa-solid fa-arrow-right-arrow-left text-ryu-b mb-2 group-hover:scale-110 transition-transform inline-block"></i><p class="text-sm text-txt-m">Transferir</p></button>
+                    <button onclick="setUserTab('tienda')" class="bg-card border border-bdr rounded-lg p-4 text-center hover:border-gold/50 transition-colors group"><i class="fa-solid fa-store text-gold-b mb-2 group-hover:scale-110 transition-transform inline-block"></i><p class="text-sm text-txt-m">Tienda</p></button>
+                </div>
+                ${ultimos.length>0?`<div class="bg-card border border-bdr rounded-xl overflow-hidden card-glow"><div class="px-4 py-3 border-b border-bdr"><p class="text-sm font-semibold text-txt-m">Ultimos movimientos</p></div><div class="divide-y divide-bdr/50">${ultimos.map(t=>{const ent=t.a===sesion.cuenta&&t.de!==sesion.cuenta;return`<div class="px-4 py-3 flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center ${ent?'bg-green-900/30':'bg-red-900/30'}"><i class="fa-solid ${tipoIcon(t.tipo)} text-xs ${ent?'text-green-400':'text-red-400'}"></i></div><div class="flex-1 min-w-0"><p class="text-sm text-txt truncate">${t.descripcion || t.desc}</p><p class="text-xs text-txt-d">${fFecha(t.fecha)}</p></div><p class="text-sm font-semibold ${ent?'text-green-400':'text-red-400'} whitespace-nowrap">${ent?'+':'-'}${fYen(t.cantidad)}</p></div>`;}).join('')}</div></div>`:`<div class="bg-card border border-bdr rounded-xl p-8 text-center"><i class="fa-solid fa-inbox text-txt-d text-2xl mb-2"></i><p class="text-txt-d text-sm">Sin movimientos aun</p></div>`}`;
+        }
+        else if (userTab === 'transferir') {
+            el.innerHTML = `<div class="bg-card border border-bdr rounded-xl p-6 card-glow mb-4"><h2 class="font-display text-lg text-txt mb-4">Transferir Yenes</h2><div class="space-y-4"><div><label class="block text-txt-d text-xs uppercase tracking-wider mb-1.5">Cuenta destino</label><input id="tf-dest" type="text" maxlength="4" class="input-field font-mono tracking-[0.5em] text-center" placeholder="0000" oninput="this.value=this.value.replace(/\\D/g,'')"></div><div><label class="block text-txt-d text-xs uppercase tracking-wider mb-1.5">Cantidad (¥)</label><input id="tf-monto" type="number" class="input-field text-center text-lg" placeholder="0" min="0"></div><p class="text-txt-d text-xs">Saldo disponible: <span class="text-gold-b font-semibold">${fYen(u.saldo)}</span></p><button onclick="handleTransferir()" class="btn-primary w-full">Enviar transferencia</button></div></div><div class="bg-card-alt border border-bdr rounded-lg p-4"><p class="text-txt-d text-xs leading-relaxed"><i class="fa-solid fa-circle-info mr-1 text-ryu-b"></i>Verifica bien la cuenta destino. Las transferencias son definitivas.</p></div>`;
+        }
+        else if (userTab === 'tienda') {
+            el.innerHTML = `<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Tienda de la Familia</h2><p class="text-txt-d text-sm">Adquiere bienes y servicios con tu saldo</p></div><div class="grid gap-3">${CATALOGO.map(item=>`<div class="bg-card border border-bdr rounded-xl p-4 flex items-start gap-4 card-glow hover:border-bdr-light transition-colors"><div class="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0 mt-0.5"><i class="fa-solid fa-torii-gate text-gold-b text-sm"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-txt">${item.nombre}</p><p class="text-xs text-txt-d mt-0.5">${item.desc}</p><div class="flex items-center justify-between mt-3"><p class="text-gold-b font-bold text-sm">${fYen(item.precio)}</p><button onclick="handleCompra(${item.id})" class="btn-gold text-xs">Comprar</button></div></div></div>`).join('')}</div><p class="text-txt-d text-xs mt-4 text-center">Saldo disponible: <span class="text-gold-b font-semibold">${fYen(u.saldo)}</span></p>`;
+        }
+        else if (userTab === 'historial') {
+            const txs = db.transacciones.filter(t => t.de === sesion.cuenta || t.a === sesion.cuenta);
+            el.innerHTML = `<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Historial de Movimientos</h2><p class="text-txt-d text-sm">${txs.length} movimiento${txs.length!==1?'s':''}</p></div>${txs.length>0?`<div class="bg-card border border-bdr rounded-xl overflow-hidden card-glow"><div class="divide-y divide-bdr/50">${txs.map(t=>{const ent=t.a===sesion.cuenta&&t.de!==sesion.cuenta;const prop=t.de===sesion.cuenta&&t.a===sesion.cuenta;const neut=t.tipo==='registro'||t.tipo==='eliminacion';let signo='',color=tipoColor(t.tipo);if(neut){}else if(prop){color='text-txt-d';}else if(ent){signo='+';color='text-green-400';}else{signo='-';color='text-red-400';}return`<div class="px-4 py-3 flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${ent?'bg-green-900/20':neut?'bg-card-alt':'bg-red-900/20'}"><i class="fa-solid ${tipoIcon(t.tipo)} text-xs ${color}"></i></div><div class="flex-1 min-w-0"><p class="text-sm text-txt truncate">${t.descripcion || t.desc}</p><p class="text-xs text-txt-d">${fFecha(t.fecha)}</p></div><div class="text-right shrink-0"><p class="text-sm font-semibold ${color} whitespace-nowrap">${signo}${t.cantidad>0?fYen(t.cantidad):'---'}</p><p class="text-[10px] text-txt-d uppercase">${fTipo(t.tipo)}</p></div></div>`;}).join('')}</div></div>`:`<div class="bg-card border border-bdr rounded-xl p-8 text-center"><i class="fa-solid fa-inbox text-txt-d text-2xl mb-2"></i><p class="text-txt-d text-sm">Sin movimientos</p></div>`}`;
+        }
+    } catch(e) {
+        toast("Error cargando datos: " + e.message, "err");
     }
 }
 
 async function renderAdmin() {
-    const db = await cargarTodo();
-    const el = document.getElementById('admin-content'); el.className = 'fade-in';
+    try {
+        const db = await cargarTodo();
+        const el = document.getElementById('admin-content'); el.className = 'fade-in';
 
-    if (adminTab === 'control') {
-        const admin = db.users.find(x => x.cuenta === '0001') || { saldo: 0 };
-        const otros = db.users.filter(u => u.cuenta !== '0001');
-        const totalCirc = otros.reduce((s,u) => s + u.saldo, 0);
-        el.innerHTML = `
-        <div class="bg-gradient-to-br from-card to-card-alt border border-gold/20 rounded-xl p-6 sm:p-8 text-center card-gold relative overflow-hidden mb-5">
-            <p class="text-txt-d text-xs uppercase tracking-[0.25em] mb-1">Tu saldo de Administración</p>
-            <p class="text-3xl sm:text-4xl font-bold text-gold-b font-display">${fYen(admin.saldo)}</p>
-            <p class="text-txt-d text-xs mt-2">Cuenta #0001 — Desde aquí transferís a los miembros</p>
-        </div>
-        <div class="grid grid-cols-3 gap-3 mb-5">
-            <div class="bg-card border border-bdr rounded-lg p-3 text-center"><p class="text-txt-d text-[10px] uppercase tracking-wider">Miembros</p><p class="text-lg font-bold text-txt mt-0.5">${otros.length}</p></div>
-            <div class="bg-card border border-bdr rounded-lg p-3 text-center"><p class="text-txt-d text-[10px] uppercase tracking-wider">En sus cuentas</p><p class="text-lg font-bold text-gold-b mt-0.5">${fYen(totalCirc)}</p></div>
-            <div class="bg-card border border-bdr rounded-lg p-3 text-center"><p class="text-txt-d text-[10px] uppercase tracking-wider">Movimientos</p><p class="text-lg font-bold text-txt mt-0.5">${db.transacciones.length}</p></div>
-        </div>
-        <div class="bg-card border border-bdr rounded-xl overflow-hidden card-gold">
-            <div class="px-4 py-3 border-b border-bdr flex items-center justify-between">
-                <p class="text-sm font-semibold text-txt-m">Todos los usuarios</p>
-                <span class="text-[10px] text-txt-d uppercase tracking-wider">Contraseñas visibles</span>
+        if (adminTab === 'control') {
+            const admin = db.users.find(x => x.cuenta === '0001') || { saldo: 0 };
+            const otros = db.users.filter(u => u.cuenta !== '0001');
+            const totalCirc = otros.reduce((s,u) => s + u.saldo, 0);
+            el.innerHTML = `
+            <div class="bg-gradient-to-br from-card to-card-alt border border-gold/20 rounded-xl p-6 sm:p-8 text-center card-gold relative overflow-hidden mb-5">
+                <p class="text-txt-d text-xs uppercase tracking-[0.25em] mb-1">Tu saldo de Administración</p>
+                <p class="text-3xl sm:text-4xl font-bold text-gold-b font-display">${fYen(admin.saldo)}</p>
+                <p class="text-txt-d text-xs mt-2">Cuenta #0001 — Desde aquí transferís a los miembros</p>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead><tr class="border-b border-bdr text-txt-d text-[10px] uppercase tracking-wider"><th class="text-left px-4 py-2.5 font-medium">Cuenta</th><th class="text-left px-4 py-2.5 font-medium">Nombre</th><th class="text-left px-4 py-2.5 font-medium">Contraseña</th><th class="text-right px-4 py-2.5 font-medium">Saldo</th><th class="text-right px-4 py-2.5 font-medium">Acciones</th></tr></thead>
-                    <tbody class="divide-y divide-bdr/50">
-                        ${otros.length === 0 ? `<tr><td colspan="5" class="px-4 py-8 text-center text-txt-d text-sm">No hay miembros registrados</td></tr>` : ''}
-                        ${otros.map(u => `
-                        <tr class="table-row transition-colors">
-                            <td class="px-4 py-3 font-mono text-ryu-b font-semibold">#${u.cuenta}</td>
-                            <td class="px-4 py-3 text-txt">${u.nombre}</td>
-                            <td class="px-4 py-3 font-mono text-amber-400 bg-amber-900/5 text-center">${u.pin}</td>
-                            <td class="px-4 py-3 text-right font-semibold ${u.saldo>0?'text-gold-b':'text-txt-d'}">${fYen(u.saldo)}</td>
-                            <td class="px-4 py-3 text-right"><div class="flex items-center justify-end gap-1.5 flex-wrap">
-                                <button onclick="admTransferir('${u.cuenta}')" class="adm-action bg-blue-900/40 text-blue-400 hover:bg-blue-900/70" title="Transferir desde tu saldo"><i class="fa-solid fa-arrow-right text-[9px]"></i>Enviar</button>
-                                <button onclick="admInyectar('${u.cuenta}')" class="adm-action bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/70" title="Crear dinero nuevo"><i class="fa-solid fa-plus text-[9px]"></i>Inyectar</button>
-                                <button onclick="admDrenar('${u.cuenta}')" class="adm-action bg-orange-900/40 text-orange-400 hover:bg-orange-900/70" title="Eliminar dinero del sistema"><i class="fa-solid fa-minus text-[9px]"></i>Drenar</button>
-                                <button onclick="admEliminar('${u.cuenta}')" class="adm-action bg-card-alt text-txt-d hover:text-red-400 hover:bg-red-900/20" title="Eliminar cuenta"><i class="fa-solid fa-trash text-[9px]"></i></button>
-                            </div></td>
-                        </tr>`).join('')}
-                    </tbody>
-                </table>
+            <div class="grid grid-cols-3 gap-3 mb-5">
+                <div class="bg-card border border-bdr rounded-lg p-3 text-center"><p class="text-txt-d text-[10px] uppercase tracking-wider">Miembros</p><p class="text-lg font-bold text-txt mt-0.5">${otros.length}</p></div>
+                <div class="bg-card border border-bdr rounded-lg p-3 text-center"><p class="text-txt-d text-[10px] uppercase tracking-wider">En sus cuentas</p><p class="text-lg font-bold text-gold-b mt-0.5">${fYen(totalCirc)}</p></div>
+                <div class="bg-card border border-bdr rounded-lg p-3 text-center"><p class="text-txt-d text-[10px] uppercase tracking-wider">Movimientos</p><p class="text-lg font-bold text-txt mt-0.5">${db.transacciones.length}</p></div>
             </div>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
-            <div class="bg-card border border-bdr rounded-lg p-2.5 text-center"><span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span><span class="text-[10px] text-txt-d">Enviar = de tu saldo</span></div>
-            <div class="bg-card border border-bdr rounded-lg p-2.5 text-center"><span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span><span class="text-[10px] text-txt-d">Inyectar = dinero nuevo</span></div>
-            <div class="bg-card border border-bdr rounded-lg p-2.5 text-center"><span class="inline-block w-2 h-2 rounded-full bg-orange-400 mr-1"></span><span class="text-[10px] text-txt-d">Drenar = elimina dinero</span></div>
-            <div class="bg-card border border-bdr rounded-lg p-2.5 text-center"><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span><span class="text-[10px] text-txt-d">Eliminar = borra cuenta</span></div>
-        </div>`;
-    }
-    else if (adminTab === 'movimientos') {
-        const txs = db.transacciones; // Ya vienen ordenados por cargarTodo
-        el.innerHTML = `<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Registro Completo</h2><p class="text-txt-d text-sm">${txs.length} movimientos registrados</p></div>
-        ${txs.length>0?`<div class="bg-card border border-bdr rounded-xl overflow-hidden card-glow"><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-bdr text-txt-d text-[10px] uppercase tracking-wider"><th class="text-left px-4 py-2.5 font-medium">ID</th><th class="text-left px-4 py-2.5 font-medium">Fecha</th><th class="text-left px-4 py-2.5 font-medium">Tipo</th><th class="text-left px-4 py-2.5 font-medium">Detalle</th><th class="text-right px-4 py-2.5 font-medium">Cantidad</th></tr></thead><tbody class="divide-y divide-bdr/50">${txs.map(t=>`<tr class="table-row transition-colors"><td class="px-4 py-2.5 font-mono text-txt-d text-xs">#${t.id}</td><td class="px-4 py-2.5 text-txt-d text-xs whitespace-nowrap">${fFecha(t.fecha)}</td><td class="px-4 py-2.5"><span class="${tipoColor(t.tipo)} text-xs font-medium uppercase tracking-wider">${fTipo(t.tipo)}</span></td><td class="px-4 py-2.5 text-txt-m text-xs max-w-[250px] truncate">${t.descripcion || t.desc}</td><td class="px-4 py-2.5 text-right font-mono font-semibold ${t.cantidad>0?'text-txt':'text-txt-d'}">${t.cantidad>0?fYen(t.cantidad):'---'}</td></tr>`).join('')}</tbody></table></div></div>`:`<div class="bg-card border border-bdr rounded-xl p-8 text-center"><p class="text-txt-d text-sm">Sin movimientos</p></div>`}`;
-    }
-    else if (adminTab === 'sincronizar') {
-        el.innerHTML = `
-        <div class="mb-5"><h2 class="font-display text-lg text-txt mb-1">Sincronizar Datos</h2><p class="text-txt-d text-xs leading-relaxed max-w-lg">Los datos están en la nube (Supabase). No necesitas exportar/importar manualmente. Todos los usuarios conectados ven los mismos datos en tiempo real.</p></div>
-        <div class="bg-card border border-bdr rounded-xl p-5 card-gold">
-            <h3 class="text-sm font-semibold text-gold-b mb-3"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Estado de la nube</h3>
-            <p class="text-txt-m text-sm">Usuarios totales: ${db.users.length}</p>
-            <p class="text-txt-m text-sm mt-1">Transacciones totales: ${db.transacciones.length}</p>
-            <p class="text-txt-d text-xs mt-4"><i class="fa-solid fa-circle-check text-green-500 mr-1"></i>Conectado a Supabase</p>
-        </div>`;
+            <div class="bg-card border border-bdr rounded-xl overflow-hidden card-gold">
+                <div class="px-4 py-3 border-b border-bdr flex items-center justify-between">
+                    <p class="text-sm font-semibold text-txt-m">Todos los usuarios</p>
+                    <span class="text-[10px] text-txt-d uppercase tracking-wider">Contraseñas visibles</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead><tr class="border-b border-bdr text-txt-d text-[10px] uppercase tracking-wider"><th class="text-left px-4 py-2.5 font-medium">Cuenta</th><th class="text-left px-4 py-2.5 font-medium">Nombre</th><th class="text-left px-4 py-2.5 font-medium">Contraseña</th><th class="text-right px-4 py-2.5 font-medium">Saldo</th><th class="text-right px-4 py-2.5 font-medium">Acciones</th></tr></thead>
+                        <tbody class="divide-y divide-bdr/50">
+                            ${otros.length === 0 ? `<tr><td colspan="5" class="px-4 py-8 text-center text-txt-d text-sm">No hay miembros registrados</td></tr>` : ''}
+                            ${otros.map(u => `
+                            <tr class="table-row transition-colors">
+                                <td class="px-4 py-3 font-mono text-ryu-b font-semibold">#${u.cuenta}</td>
+                                <td class="px-4 py-3 text-txt">${u.nombre}</td>
+                                <td class="px-4 py-3 font-mono text-amber-400 bg-amber-900/5 text-center">${u.pin}</td>
+                                <td class="px-4 py-3 text-right font-semibold ${u.saldo>0?'text-gold-b':'text-txt-d'}">${fYen(u.saldo)}</td>
+                                <td class="px-4 py-3 text-right"><div class="flex items-center justify-end gap-1.5 flex-wrap">
+                                    <button onclick="admTransferir('${u.cuenta}')" class="adm-action bg-blue-900/40 text-blue-400 hover:bg-blue-900/70" title="Transferir desde tu saldo"><i class="fa-solid fa-arrow-right text-[9px]"></i>Enviar</button>
+                                    <button onclick="admInyectar('${u.cuenta}')" class="adm-action bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/70" title="Crear dinero nuevo"><i class="fa-solid fa-plus text-[9px]"></i>Inyectar</button>
+                                    <button onclick="admDrenar('${u.cuenta}')" class="adm-action bg-orange-900/40 text-orange-400 hover:bg-orange-900/70" title="Eliminar dinero del sistema"><i class="fa-solid fa-minus text-[9px]"></i>Drenar</button>
+                                    <button onclick="admEliminar('${u.cuenta}')" class="adm-action bg-card-alt text-txt-d hover:text-red-400 hover:bg-red-900/20" title="Eliminar cuenta"><i class="fa-solid fa-trash text-[9px]"></i></button>
+                                </div></td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+                <div class="bg-card border border-bdr rounded-lg p-2.5 text-center"><span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span><span class="text-[10px] text-txt-d">Enviar = de tu saldo</span></div>
+                <div class="bg-card border border-bdr rounded-lg p-2.5 text-center"><span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span><span class="text-[10px] text-txt-d">Inyectar = dinero nuevo</span></div>
+                <div class="bg-card border border-bdr rounded-lg p-2.5 text-center"><span class="inline-block w-2 h-2 rounded-full bg-orange-400 mr-1"></span><span class="text-[10px] text-txt-d">Drenar = elimina dinero</span></div>
+                <div class="bg-card border border-bdr rounded-lg p-2.5 text-center"><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span><span class="text-[10px] text-txt-d">Eliminar = borra cuenta</span></div>
+            </div>`;
+        }
+        else if (adminTab === 'movimientos') {
+            const txs = db.transacciones;
+            el.innerHTML = `<div class="mb-4"><h2 class="font-display text-lg text-txt mb-1">Registro Completo</h2><p class="text-txt-d text-sm">${txs.length} movimientos registrados</p></div>
+            ${txs.length>0?`<div class="bg-card border border-bdr rounded-xl overflow-hidden card-glow"><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-bdr text-txt-d text-[10px] uppercase tracking-wider"><th class="text-left px-4 py-2.5 font-medium">ID</th><th class="text-left px-4 py-2.5 font-medium">Fecha</th><th class="text-left px-4 py-2.5 font-medium">Tipo</th><th class="text-left px-4 py-2.5 font-medium">Detalle</th><th class="text-right px-4 py-2.5 font-medium">Cantidad</th></tr></thead><tbody class="divide-y divide-bdr/50">${txs.map(t=>`<tr class="table-row transition-colors"><td class="px-4 py-2.5 font-mono text-txt-d text-xs">#${t.id}</td><td class="px-4 py-2.5 text-txt-d text-xs whitespace-nowrap">${fFecha(t.fecha)}</td><td class="px-4 py-2.5"><span class="${tipoColor(t.tipo)} text-xs font-medium uppercase tracking-wider">${fTipo(t.tipo)}</span></td><td class="px-4 py-2.5 text-txt-m text-xs max-w-[250px] truncate">${t.descripcion || t.desc}</td><td class="px-4 py-2.5 text-right font-mono font-semibold ${t.cantidad>0?'text-txt':'text-txt-d'}">${t.cantidad>0?fYen(t.cantidad):'---'}</td></tr>`).join('')}</tbody></table></div></div>`:`<div class="bg-card border border-bdr rounded-xl p-8 text-center"><p class="text-txt-d text-sm">Sin movimientos</p></div>`}`;
+        }
+        else if (adminTab === 'sincronizar') {
+            el.innerHTML = `
+            <div class="mb-5"><h2 class="font-display text-lg text-txt mb-1">Sincronizar Datos</h2><p class="text-txt-d text-xs leading-relaxed max-w-lg">Los datos están en la nube (Supabase). No necesitas exportar/importar manualmente. Todos los usuarios conectados ven los mismos datos en tiempo real.</p></div>
+            <div class="bg-card border border-bdr rounded-xl p-5 card-gold">
+                <h3 class="text-sm font-semibold text-gold-b mb-3"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Estado de la nube</h3>
+                <p class="text-txt-m text-sm">Usuarios totales: ${db.users.length}</p>
+                <p class="text-txt-m text-sm mt-1">Transacciones totales: ${db.transacciones.length}</p>
+                <p class="text-txt-d text-xs mt-4"><i class="fa-solid fa-circle-check text-green-500 mr-1"></i>Conectado a Supabase</p>
+            </div>`;
+        }
+    } catch(e) {
+        toast("Error cargando datos: " + e.message, "err");
     }
 }
 
 // ============================================================
-// INICIALIZACIÓN
+// INICIALIZACIÓN (NO BLOQUEANTE)
 // ============================================================
-(async function init() {
-    try {
-        await inicializarAdmin();
-        // Ocultar loader cuando estamos listos
-        document.getElementById('loading-overlay').style.display = 'none';
-        showScreen('login');
-    } catch (error) {
-        console.error(error);
-        document.getElementById('loading-overlay').innerHTML = `<p class="text-red-500">Error de inicio. Revisa la consola.</p>`;
+function init() {
+    // 1. Ocultar el cargador inmediatamente para que el usuario vea la UI
+    const loader = document.getElementById('loading-overlay');
+    if(loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
     }
-})();
+    
+    // 2. Mostrar pantalla de Login
+    showScreen('login');
+
+    // 3. Verificar Admin en segundo plano (No bloquea la UI)
+    inicializarAdmin().catch(e => console.error(e));
+}
+
+// Ejecutar al cargar
+init();
 
 // Enter para acceder
 document.addEventListener('keydown', e => {
