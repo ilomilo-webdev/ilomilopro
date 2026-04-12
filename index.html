@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>龍銀行 — Banco del Dragón (Nube)</title>
+    <title>龍銀行 — Banco del Dragón (Online)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Librería de Supabase (El teléfono para llamar a la nube) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -162,10 +162,10 @@
 
 <script>
 // ============================================================
-//  CONFIGURACIÓN DE SUPABASE (CAMBIA ESTAS DOS LÍNEAS)
+//  CONFIGURACIÓN DE SUPABASE (YA CON TUS DATOS)
 // ============================================================
-const SUPABASE_URL = 'https://cjpcskqmiuhmioedyspv.supabase.co';  // <- PEGA AQUÍ TU URL
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcGNza3FtaXVobWlvZWR5c3B2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NjE1NTQsImV4cCI6MjA5MTUzNzU1NH0.0Z8o8GLAUAMg-2pDQHA0_HPsI03cEyvgiP4heJwzTyY';             // <- PEGA AQUÍ TU KEY
+const SUPABASE_URL = 'https://cjpcskqmiuhmioedyspv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcGNza3FtaXVobWlvZWR5c3B2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NjE1NTQsImV4cCI6MjA5MTUzNzU1NH0.0Z8o8GLAUAMg-2pDQHA0_HPsI03cEyvgiP4heJwzTyY';
 
 // Crear el cliente de Supabase (el cartero)
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -188,19 +188,27 @@ const CATALOGO = [
 // FUNCIONES AUXILIARES PARA SUPABASE
 // ============================================================
 async function cargarTodo() {
-    const [resUsers, resTx] = await Promise.all([
-        supabase.from('users').select('*'),
-        supabase.from('transacciones').select('*').order('fecha', { ascending: true })
-    ]);
-    return {
-        users: resUsers.data || [],
-        transacciones: resTx.data || []
-    };
+    try {
+        const [resUsers, resTx] = await Promise.all([
+            supabase.from('users').select('*'),
+            supabase.from('transacciones').select('*').order('fecha', { ascending: true })
+        ]);
+        if (resUsers.error) throw resUsers.error;
+        if (resTx.error) throw resTx.error;
+        return {
+            users: resUsers.data || [],
+            transacciones: resTx.data || []
+        };
+    } catch (e) {
+        console.error('Error cargando datos:', e);
+        toast('Error al conectar con la base de datos. Revisa que las tablas "users" y "transacciones" existan en Supabase.', 'err');
+        return { users: [], transacciones: [] };
+    }
 }
 
 async function guardarUsuario(user) {
     const { error } = await supabase.from('users').upsert(user, { onConflict: 'cuenta' });
-    if (error) { console.error(error); toast("Error al guardar usuario", "err"); return false; }
+    if (error) { console.error(error); toast("Error al guardar usuario: " + error.message, "err"); return false; }
     return true;
 }
 
@@ -213,22 +221,27 @@ async function guardarTx(tx) {
         descripcion: tx.desc,
         fecha: tx.fecha || new Date().toISOString()
     }]);
-    if (error) { console.error(error); toast("Error al guardar transacción", "err"); return false; }
+    if (error) { console.error(error); toast("Error al guardar transacción: " + error.message, "err"); return false; }
     return true;
 }
 
 // Crear admin si no existe (se ejecuta al cargar la página)
 async function inicializarAdmin() {
-    const { data } = await supabase.from('users').select('cuenta').eq('cuenta', '0001');
-    if (!data || data.length === 0) {
-        await guardarUsuario({
-            cuenta: '0001',
-            pin: 'admin123',
-            nombre: 'Administración',
-            saldo: 0,
-            creado: new Date().toISOString(),
-            es_admin: true
-        });
+    try {
+        const { data } = await supabase.from('users').select('cuenta').eq('cuenta', '0001');
+        if (!data || data.length === 0) {
+            await guardarUsuario({
+                cuenta: '0001',
+                pin: 'admin123',
+                nombre: 'Administración',
+                saldo: 0,
+                creado: new Date().toISOString(),
+                es_admin: true
+            });
+            console.log('Admin creado automáticamente');
+        }
+    } catch (e) {
+        console.warn('No se pudo verificar/crear admin:', e);
     }
 }
 
@@ -237,7 +250,7 @@ async function inicializarAdmin() {
 // ============================================================
 async function generarCuenta() {
     const { data } = await supabase.from('users').select('cuenta');
-    const usadas = new Set(data.map(u => u.cuenta));
+    const usadas = new Set((data || []).map(u => u.cuenta));
     let c;
     do { c = String(Math.floor(Math.random()*10000)).padStart(4,'0'); } while (usadas.has(c));
     return c;
@@ -353,7 +366,7 @@ async function eliminarUsuario(cuenta) {
         desc: `Cuenta eliminada: ${u.nombre}`
     });
     const { error } = await supabase.from('users').delete().eq('cuenta', cuenta);
-    if (error) return { error: 'Error al eliminar' };
+    if (error) return { error: 'Error al eliminar: ' + error.message };
     return { ok: true };
 }
 
@@ -370,7 +383,7 @@ function toast(msg, tipo='info') {
     const c = document.getElementById('toast-container'), el = document.createElement('div');
     el.className = 'toast toast-' + tipo; el.textContent = msg; c.appendChild(el);
     requestAnimationFrame(() => el.classList.add('show'));
-    setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 3500);
+    setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 5000);
 }
 
 function showModal(title, subtitle, bodyHTML, onConfirm, confirmText='Confirmar', extraClass='') {
